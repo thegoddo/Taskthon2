@@ -55,8 +55,8 @@ def get_all_tasks():
 def update_task_status(task_id, new_status):
     """Updates the status of a task."""
     
-    if new_status not in ["pending","In-Progress","completed"]:
-        raise ValueError("Invalid status. Status must be 'pending' or 'completed'.")
+    if new_status not in ["pending","in_progress","completed"]:
+        raise ValueError("Invalid status. Status must be 'pending', 'in_progress', or 'completed'.")
         
     with get_connection() as conn:
         cursor = conn.cursor()
