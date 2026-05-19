@@ -56,7 +56,7 @@ def main():
     # Update command
     parser_update = subparsers.add_parser("update", help="Update a task's status")
     parser_update.add_argument("id", type=int, help="ID of the task to update")
-    parser_update.add_argument("status", type=str, help="New status for the task")
+    parser_update.add_argument("--status", type=str, help="New status for the task")
     parser_update.set_defaults(func=handle_update)
     
     # Delete command
