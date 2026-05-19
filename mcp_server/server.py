@@ -12,7 +12,7 @@ mcp = FastMCP("TskthonStudio")
 
 
 @mcp.tool()
-def create_todo_task(title: str, description: str) -> int:
+def create_todo_task(title: str, description: str) -> str:
     """
     Creates a brand new to-do task item inside the database.
     Use this tool whenever the user explicitly asks to add, save, or write down a task.
