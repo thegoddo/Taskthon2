@@ -1,4 +1,11 @@
 import argparse
+import os
+import sys
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
 from database.db_manager import initialize_db, add_task, get_all_tasks, update_task_status, delete_task
 
 def handle_add(arg):
@@ -21,20 +28,22 @@ def handle_list(arg):
 def handle_update(arg):
     """Handler for updating a task's status."""
     try:
-        update_task_status(arg.id, arg.status)
-        print(f"Task with ID {arg.id} updated successfully.")
+        if update_task_status(arg.id, arg.status):
+            print(f"Task with ID {arg.id} updated successfully.")
+        else:
+            print(f"Error: Task with ID {arg.id} not found.")
     except ValueError as e:
         print(f"Error: {e}")
-    except:
-        print(f"Error: Task with ID {arg.id} not found.")
         
 def handle_delete(arg):
     """Handler for deleting a task."""
     try:
-        delete_task(arg.id)
-        print(f"Task with ID {arg.id} deleted successfully.")
-    except:
-        print(f"Error: Task with ID {arg.id} not found.")
+        if delete_task(arg.id):
+            print(f"Task with ID {arg.id} deleted successfully.")
+        else:
+            print(f"Error: Task with ID {arg.id} not found.")
+    except Exception as e:
+        print(f"Error: {e}")
         
     
 def main():
