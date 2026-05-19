@@ -52,3 +52,20 @@ def get_all_tasks():
         return [dict(row) for row in rows]  # Convert rows to list of dictionaries
 
 
+def update_task_status(task_id, new_status):
+    """Updates the status of a task."""
+    
+    if new_status not in ["pending","In-Progress","completed"]:
+        raise ValueError("Invalid status. Status must be 'pending' or 'completed'.")
+        
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE tasks SET status = ? WHERE id = ?", (new_status, task_id))
+        conn.commit()
+        
+def delete_task(task_id):
+    """Deletes a task from the database."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
+        conn.commit()
