@@ -29,14 +29,14 @@ def initialize_db():
     print("Database initialized successfully.")
 
 
-def add_task(title, description):
+def add_task(title, description=""):
     """Inserts a new task into the database."""
 
     current_time = datetime.now().isoformat()  # Get current time in ISO format
     with get_connection() as conn:
-        cursor = conn.curson()
+        cursor = conn.cursor()
         cursor.execute(
-            """INSERT INTO tasks (title, description, statu, created_at) VALUES (?, ?, ?, ?)""", 
+            """INSERT INTO tasks (title, description, status, created_at) VALUES (?, ?, ?, ?)""", 
             (title, description, "pending", current_time))
         conn.commit()
         return cursor.lastrowid  # Return the ID of the newly created task
