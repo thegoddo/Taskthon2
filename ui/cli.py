@@ -45,6 +45,15 @@ def handle_delete(arg):
     except Exception as e:
         print(f"Error: {e}")
         
+def handle_ask(arg):
+    """Handler for asking the AI agent."""
+    from ai_agent.agent import run_ai_command
+    import asyncio
+    
+    print(f"Prompting AI Agent with: \"{arg.prompt}\"")
+    response = asyncio.run(run_ai_command(arg.prompt))
+    print(f"AI Agent Response:\n{response}")
+        
     
 def main():
     initialize_db()
@@ -73,8 +82,13 @@ def main():
     parser_delete.add_argument("id", type=int, help="ID of the task to delete")
     parser_delete.set_defaults(func=handle_delete)
 
+    # Ask command (Cleaned up duplicate)
+    parser_ask = subparsers.add_parser("ask", help="Ask the AI agent to manage your tasks")
+    parser_ask.add_argument("prompt", type=str, help="Natural language request for the AI")
+    parser_ask.set_defaults(func=handle_ask)
+
     args = parser.parse_args()
     args.func(args)
-    
+
 if __name__ == "__main__":
     main()

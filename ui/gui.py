@@ -245,14 +245,35 @@ class TodoGUI:
         self.chat_display.config(state=tk.DISABLED)
 
     def ui_send_ai_prompt(self):
+        """Routes natural language strings into LangChain, updates chat, and refreshes tables."""
         prompt = self.chat_entry.get().strip()
         if not prompt:
             return
 
+        # 1. Post user question immediately onto chat log
         self.append_to_chat("You", prompt)
         self.chat_entry.delete(0, tk.END)
-        self.append_to_chat(
-            "Agent", "I received your command! Once we wire up our LangChain agent with MCP, I will parse this phrase and manage your database live.")
+        
+        # 2. Tell the user the assistant is processing the query
+        self.append_to_chat("Agent", "Thinking... Processing database transaction.")
+        self.root.update_idletasks()  # Forces Tkinter to redraw the screen immediately
+
+        # 3. Import and execute our async LangChain engine
+        try:
+            import asyncio
+            from ai_agent.agent import run_ai_command
+            
+            # Execute the asynchronous pipeline safely inside our GUI window callback
+            ai_response = asyncio.run(run_ai_command(prompt))
+            
+            # 4. Append the tool completion response into the chat panel log
+            self.append_to_chat("Agent", ai_response)
+            
+            # 5. Instantly refresh the left-hand task view grid!
+            self.refresh_task_list()
+            
+        except Exception as e:
+            self.append_to_chat("System Error", f"Failed to reach AI Core: {str(e)}")
 
 
 if __name__ == "__main__":
