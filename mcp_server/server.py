@@ -82,6 +82,34 @@ def remove_todo_task(task_id: int) -> str:
         return f"Task ID {task_id} has been deleted."
     except Exception as e:
         return f"Error deleting task: {str(e)}"
+    
+@mcp.tool()
+def search_tasks_by_keyword(keyword: str) -> str:
+    """
+    Searches and filters tasks in the database whose title or description contains the specific keyword.
+    Use this tool when the user asks questions about specific existing tasks, projects, topics, or milestones.
+    """
+    from database.db_manager import get_connection
+    try:
+        with get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM tasks WHERE title LIKE ? OR description LIKE ? ORDER BY id DESC",
+                (f"%{keyword}%", f"%{keyword}%")
+            )
+            rows = cursor.fetchall()
+            tasks = [dict(row) for row in rows]
+
+        if not tasks:
+            return f"Checked the database. No existing tasks found matching the keyword: '{keyword}'."
+
+        output = f"Found the following matching tasks for '{keyword}':\n"
+        for t in tasks:
+            desc = f" ({t['description']})" if t['description'] else ""
+            output += f"- [ID: {t['id']}] {t['title']} | Status: {t['status']}{desc}\n"
+        return output
+    except Exception as e:
+        return f"Error searching tasks: {str(e)}"
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")

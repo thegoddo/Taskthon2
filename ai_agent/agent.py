@@ -37,9 +37,12 @@ async def run_ai_command(user_prompt: str) -> str:
                 tools_description += f"- Tool Name: {tool.name}\n  Description: {tool.description}\n  Schema: {tool.inputSchema}\n\n"
                
             system_instruction = (
-                "You are an AI Assistant that manages a To-Do list database via tool calling.\n"
-                "Based on the user prompt, choose ONE appropriate tool from the list below.\n"
-                "You MUST respond with a raw JSON object containing 'tool_name' and 'arguments'.\n"
+                "You are an intelligent AI Assistant managing a To-Do list database via tool calling.\n"
+                "CRITICAL INSTRUCTIONS:\n"
+                "1. If the user asks a question about an existing project, task details, or queries 'what is/was', "
+                "you MUST use the 'search_tasks_by_keyword' tool first to find it. DO NOT create a new task.\n"
+                "2. Only use 'create_todo_task' if the user explicitly commands you to add, save, note down, or create something new.\n"
+                "3. You MUST respond with a raw JSON object containing 'tool_name' and 'arguments'.\n"
                 "Do not include any conversational text outside the JSON block.\n\n"
                 f"Available Tools:\n{tools_description}"
             )
