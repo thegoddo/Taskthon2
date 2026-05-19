@@ -50,6 +50,14 @@ def get_all_tasks():
         rows = cursor.fetchall()
         
         return [dict(row) for row in rows]  # Convert rows to list of dictionaries
+    
+def get_task_by_id(task_id: int):
+    """Retrieves a single specific task from the database by its ID."""
+    with get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
 
 
 def update_task_status(task_id, new_status):
@@ -62,6 +70,7 @@ def update_task_status(task_id, new_status):
         cursor = conn.cursor()
         cursor.execute("UPDATE tasks SET status = ? WHERE id = ?", (new_status, task_id))
         conn.commit()
+        return cursor.rowcount > 0
         
 def delete_task(task_id):
     """Deletes a task from the database."""
@@ -69,3 +78,4 @@ def delete_task(task_id):
         cursor = conn.cursor()
         cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
         conn.commit()
+        return cursor.rowcount > 0
