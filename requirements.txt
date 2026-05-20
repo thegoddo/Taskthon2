@@ -1,5 +1,21 @@
-mcp 
-langchain-mcp-adapters
-langchain-groq 
-langgraph
+# --- Core Application & UI ---
+pydantic>=2.0.0
+# tkinter is built into standard Python installations on Windows/macOS.
+# On Linux, install via: sudo apt install python3-tk
+# On Fedora Linux, install via: sudo dnf install python3-tkinter
+
+# --- LLM & Orchestration Layer ---
+langchain-core
+langchain-groq
+mcp>=1.0.0
+
+# --- Agentic Web Search Feature ---
+langchain-community
+duckduckgo-search
 ddgs
+
+# --- Google Gmail MCP Client Core Libraries ---
+# (Required to safely spin up the python subprocess engine)
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
