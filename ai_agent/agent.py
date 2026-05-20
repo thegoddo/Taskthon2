@@ -11,74 +11,112 @@ if PROJECT_ROOT not in sys.path:
 from langchain_groq import ChatGroq
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+from contextlib import AsyncExitStack
 
 SERVER_PATH = os.path.join(PROJECT_ROOT, 'mcp_server', 'server.py')
 
+GMAIL_MCP_DIR = "/home/biswajitshaw/Documents/gmail-mcp" 
+GMAIL_SERVER_SCRIPT = f"{GMAIL_MCP_DIR}/src/gmail/server.py"
+GMAIL_VENV_PYTHON = f"{GMAIL_MCP_DIR}/.venv/bin/python"
+CREDS_JSON = f"{GMAIL_MCP_DIR}/credentials.json"
+TOKEN_JSON = f"{GMAIL_MCP_DIR}/token.json"
+
 async def run_ai_command(user_prompt: str) -> str:
-    """
-    Spins up the native MCP Stdio client, discovers the database tools,
-    and prompts Groq to execute transactions cleanly.
-    """
     llm = ChatGroq(model="llama-3.1-8b-instant", temperature=0)
-    
-    server_params = StdioServerParameters(
-        command="python",
-        args=[SERVER_PATH]
+
+    todo_server_params = StdioServerParameters(command="python", args=[SERVER_PATH])
+    gmail_server_params = StdioServerParameters(
+        command=GMAIL_VENV_PYTHON,
+        args=[GMAIL_SERVER_SCRIPT, "--creds-file-path", CREDS_JSON, "--token-path", TOKEN_JSON]
     )
-    
-    async with stdio_client(server_params) as (read_stream, write_stream):
-        async with ClientSession(read_stream, write_stream) as session:
-            await session.initialize()
+
+    async with AsyncExitStack() as stack:
+        # Establish connections to both streams concurrently over stdio channels
+        todo_transport = await stack.enter_async_context(stdio_client(todo_server_params))
+        gmail_transport = await stack.enter_async_context(stdio_client(gmail_server_params))
+
+        todo_session = await stack.enter_async_context(ClientSession(todo_transport[0], todo_transport[1]))
+        gmail_session = await stack.enter_async_context(ClientSession(gmail_transport[0], gmail_transport[1]))
+
+        await todo_session.initialize()
+        await gmail_session.initialize()
+
+        todo_tools = await todo_session.list_tools()
+        gmail_tools = await gmail_session.list_tools()
+
+        tools_description = "--- SQLITE TODO LIST TOOLS ---\n"
+        for tool in todo_tools.tools:
+            tools_description += f"- Name: {tool.name}\n  Desc: {tool.description}\n"
             
-            mcp_tools = await session.list_tools()
+        tools_description += "\n--- GOOGLE GMAIL API TOOLS ---\n"
+        for tool in gmail_tools.tools:
+            tools_description += f"- Name: {tool.name}\n  Desc: {tool.description}\n"
+
+        system_instruction = (
+            "You are an intelligent AI Workflow Coordinator managing a user's Gmail and local To-Do database via MCP.\n"
+            "You must handle three primary email features natively based on user instructions:\n\n"
             
-            tools_description = ""
-            for tool in mcp_tools.tools:
-                tools_description += f"- Tool Name: {tool.name}\n  Description: {tool.description}\n  Schema: {tool.inputSchema}\n\n"
-               
-            system_instruction = (
-                "You are an intelligent AI Assistant managing a To-Do list database via tool calling.\n"
-                "CRITICAL INSTRUCTIONS:\n"
-                "1. If the user asks a question about an existing project, task details, or queries 'what is/was', "
-                "you MUST use the 'search_tasks_by_keyword' tool first to find it. DO NOT create a new task.\n"
-                "2. Only use 'create_todo_task' if the user explicitly commands you to add, save, note down, or create something new.\n"
-                "3. You MUST respond with a raw JSON object containing 'tool_name' and 'arguments'.\n"
-                "Do not include any conversational text outside the JSON block.\n\n"
-                f"Available Tools:\n{tools_description}"
-            )
-
-            messages = [
-                ("system", system_instruction),
-                ("user", user_prompt)
-            ]
-            ai_response = await llm.ainvoke(messages)
+            "1. EMAIL SUMMARY FEATURE:\n"
+            "   - When asked to summarize, list, or check recent emails, select a Gmail retrieval tool (e.g., 'search-emails' or 'list-messages').\n"
+            "   - Return the tool name and arguments cleanly. Once the tool returns the data, it will be displayed.\n\n"
             
-            clean_content = ai_response.content.strip().strip("```json").strip("```").strip()
+            "2. Q&A BASED ON EMAILS FEATURE:\n"
+            "   - When the user asks a specific question about email details (e.g., 'What time is my exam according to the email?'), "
+            "     first call the appropriate Gmail tool to gather information. Do not guess information or assume data.\n\n"
+            
+            "3. CREATING TASK FROM EMAILS FEATURE:\n"
+            "   - When the user requests to create a task, note down, or generate a to-do entry based on an email thread or ID, "
+            "     you MUST select 'create_todo_task'.\n"
+            "   - CRITICAL: Do NOT pass raw email IDs into the title argument field. Instead, construct a professional, meaningful "
+            "     'title' (e.g., 'Infosys Exam Preparation') and provide a clear context summary for the 'description' argument field.\n\n"
+            
+            "GENERAL CONSTRAINTS:\n"
+            "- If the message is simple conversational text ('hi', 'thank you'), return tool_name as 'none'.\n"
+            "- You MUST respond with a single, valid raw JSON object string using double quotes only. No markdown formatting wrapper blocks.\n\n"
+            "JSON Formatting Templates:\n"
+            '{"tool_name": "none", "arguments": {"reply": "Hello! Ready to manage your emails and tasks."}}\n'
+            '{"tool_name": "create_todo_task", "arguments": {"title": "Task Title Here", "description": "Context Description Here"}}\n\n'
+            f"Available Multi-System Tool Catalog:\n{tools_description}"
+        )
 
-            try:
-                tool_call = json.loads(clean_content)
-                t_name = tool_call.get("tool_name")
-                t_args = tool_call.get("arguments", {})
+        messages = [("system", system_instruction), ("user", user_prompt)]
+        ai_response = await llm.ainvoke(messages)
+        clean_content = ai_response.content.strip().strip("```json").strip("```").strip()
 
-                print(f"AI selected tool '{t_name}' with args: {t_args}")
-                result = await session.call_tool(t_name, arguments=t_args)
-                
-                if result.content and len(result.content) > 0:
-                    return result.content[0].text
-                return "Tool executed with no return content."
+        try:
+            tool_call = json.loads(clean_content)
+            t_name = tool_call.get("tool_name", "").strip().lower()
+            t_args = tool_call.get("arguments", {})
 
-            except json.JSONDecodeError:
-                return f"Sorry, I couldn't format the execution sequence. Model replied: {ai_response.content}"
-            except Exception as e:
-                return f"Error executing database tool: {str(e)}" 
+            if t_name == "none" or not t_name:
+                return t_args.get("reply", "Hello! How can I assist you with your system workflow today?")
+
+            print(f"AI System routed event to tool: '{t_name}'")
+
+            todo_match = next((t for t in todo_tools.tools if t.name.lower() == t_name), None)
+            gmail_match = next((t for t in gmail_tools.tools if t.name.lower() == t_name), None)
+
+            if todo_match:
+                result = await todo_session.call_tool(todo_match.name, arguments=t_args)
+            elif gmail_match:
+                result = await gmail_session.call_tool(gmail_match.name, arguments=t_args)
+            else:
+                return f"AI selected unknown tool '{t_name}'."
+
+            if result.content and len(result.content) > 0:
+                return result.content[0].text
+            return "Multi-System pipeline executed successfully."
+
+        except json.JSONDecodeError:
+            return f"Failed to align JSON sequence. Model said: {ai_response.content}"
+        except Exception as e:
+            return f"Execution pipeline failure: {str(e)}"
 
 async def run_test():
-    print("Initializing direct native MCP Session context wrapper...")
-    user_prompt = "Hey! Add a task named 'Prepare MCA Project Abstract' with description 'Draft a 1 page word doc summary'."
-    print(f"\nPrompting Agent: \"{user_prompt}\"")
-    
-    response_text = await run_ai_command(user_prompt)
-    print(f"\nAI Agent Final Execution Response:\n{response_text}")
-        
+    print("Initializing upgraded multi-feature MCP ecosystem...")
+    user_prompt = "hi"
+    response = await run_ai_command(user_prompt)
+    print(f"\nAgent Response:\n{response}")
+
 if __name__ == "__main__":
     asyncio.run(run_test())

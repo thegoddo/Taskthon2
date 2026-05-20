@@ -6,12 +6,10 @@ from database.db_manager import initialize_db, add_task, get_all_tasks, update_t
 class TodoGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("AI-Enhanced To-Do Studio")
-        # Slightly widened to accommodate description header nicely
+        self.root.title("Taskthon 2.0 - To-Do List Manager with AI Assistant")
         self.root.geometry("950x550")
         self.root.minsize(850, 450)
 
-        # Ensure database is configured
         initialize_db()
 
         # Main Layout
@@ -62,12 +60,10 @@ class TodoGUI:
             self.left_frame, text=" Task Inventory (Double-click to inspect) ", padding=5)
         list_frame.pack(fill=tk.BOTH, expand=True)
 
-        # FIX: Added 'description' to columns tuple
         columns = ("id", "title", "status", "description")
         self.tree = ttk.Treeview(
             list_frame, columns=columns, show="headings", selectmode="browse")
 
-        # FIX: Configured headings and widths, including the new description column
         self.tree.heading("id", text="ID")
         self.tree.heading("title", text="Task Title")
         self.tree.heading("status", text="Status")
@@ -76,7 +72,6 @@ class TodoGUI:
         self.tree.column("id", width=40, stretch=tk.NO, anchor=tk.CENTER)
         self.tree.column("title", width=150, stretch=tk.YES)
         self.tree.column("status", width=90, stretch=tk.NO, anchor=tk.CENTER)
-        # Description column config
         self.tree.column("description", width=180, stretch=tk.YES)
 
         # Bind the Double-Click event to open our modal detail viewer
@@ -123,7 +118,7 @@ class TodoGUI:
         btn_send.pack(side=tk.RIGHT)
 
         self.append_to_chat(
-            "System", "Welcome! Once Phase 3 and 4 are complete, you can chat with your database here using natural language.")
+            "System", "Welcome! Taskthon is AI assisted to-do app which have access to your Gmail and local database.")
 
     # --- Database Interaction Actions ---
     def refresh_task_list(self):
@@ -134,7 +129,6 @@ class TodoGUI:
         for task in get_all_tasks():
             # Handle empty fields elegantly
             desc = task['description'] if task['description'] else "No description provided."
-            # FIX: Included description dictionary value inside the row insertion tuple
             self.tree.insert("", tk.END, values=(
                 task['id'], task['title'], task['status'], desc))
 
@@ -172,20 +166,17 @@ class TodoGUI:
                 delete_task(task_id)
                 self.refresh_task_list()
 
-    # --- NEW: Task Modal Detail Inspector Window ---
     def ui_open_task_modal(self, event):
         """Intercepts row double-clicks, fetches fresh data, and opens a detail modal."""
         selected_item = self.tree.selection()
         if not selected_item:
             return
 
-        # 1. Grab ONLY the task ID from the selected row
         row_values = self.tree.item(selected_item)['values']
         if not row_values:
             return
         task_id = row_values[0]
 
-        # 2. Fetch the fresh, complete record directly from SQLite
         from database.db_manager import get_task_by_id
         task = get_task_by_id(task_id)
         if not task:
