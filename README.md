@@ -2,6 +2,8 @@
 
 > A lightweight task-management assistant project with an AI agent, a small database layer, and both CLI and GUI frontends.
 
+![project image](./project.png)
+
 ## Features
 
 - AI agent for task automation and helpers (`ai_agent/agent.py`)
