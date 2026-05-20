@@ -6,7 +6,7 @@
 
 ## Features
 
-- AI agent for task automation and helpers (`ai_agent/agent.py`)
+- AI agent for task automation,agentic web search and helpers (`ai_agent/agent.py`)
 - Simple database manager (`database/db_manager.py`) with tests (`test_db.py`)
 - MCP server for integrations and automation (`mcp_server/server.py`)
 - Command-line and graphical frontends (`ui/cli.py`, `ui/gui.py`)
